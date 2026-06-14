@@ -5,6 +5,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const paiementRoutes = require('./routes/paiement');
 const adminRoutes = require('./routes/admin');
+const stocksRoutes = require('./routes/stocks');
 const db = require('./database');
 
 const app = express();
@@ -37,6 +38,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/paiement', paiementRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/stocks', stocksRoutes);
 
 app.listen(PORT, () => {
   console.log(`Serveur Technocratie démarré sur le port ${PORT}`);

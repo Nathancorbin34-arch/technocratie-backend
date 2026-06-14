@@ -12,6 +12,28 @@ router.post('/creer-session', async (req, res) => {
     return res.status(400).json({ message: 'Panier vide' });
   }
 
+  // Vérifier les stocks avant de créer la session
+  const indisponibles = [];
+  for (const item of items) {
+    const stock = db.prepare('SELECT quantite FROM stocks WHERE produit_nom = ? AND taille = ?').get(item.nom, item.taille);
+    const quantiteDisponible = stock ? stock.quantite : 0;
+    if (quantiteDisponible < item.quantite) {
+      indisponibles.push({
+        nom: item.nom,
+        taille: item.taille,
+        disponible: quantiteDisponible,
+        demande: item.quantite
+      });
+    }
+  }
+
+  if (indisponibles.length > 0) {
+    return res.status(400).json({
+      message: 'Certains articles ne sont plus disponibles',
+      indisponibles
+    });
+  }
+
   try {
     const lineItems = items.map(item => ({
       price_data: {
@@ -31,8 +53,8 @@ router.post('/creer-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: 'http://localhost:4200/commande-confirmee?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'http://localhost:4200/panier',
+      success_url: 'https://technocratie-wear.fr/commande-confirmee?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://technocratie-wear.fr/panier',
       customer_email: clientEmail || undefined,
       metadata: {
         items: JSON.stringify(items),
@@ -86,7 +108,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
       const commandeId = commande.lastInsertRowid;
 
-      // Ajouter les produits de la commande
+      // Ajouter les produits et décrémenter les stocks
       const insertProduit = db.prepare(`
         INSERT INTO commande_produits (commande_id, produit_id, quantite, taille, prix_unitaire)
         VALUES (?, ?, ?, ?, ?)
@@ -97,6 +119,12 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const produitId = produit ? produit.id : null;
         const prixUnitaire = parseFloat(item.prix.replace(',', '.').replace(' €', ''));
         insertProduit.run(commandeId, produitId, item.quantite, item.taille, prixUnitaire);
+
+        // Décrémenter le stock
+        db.prepare(`
+          UPDATE stocks SET quantite = MAX(0, quantite - ?)
+          WHERE produit_nom = ? AND taille = ?
+        `).run(item.quantite, item.nom, item.taille);
       }
 
       console.log(`✅ Commande #${commandeId} sauvegardée (${total}€)`);

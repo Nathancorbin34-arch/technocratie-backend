@@ -46,7 +46,36 @@ db.exec(`
     FOREIGN KEY (commande_id) REFERENCES commandes(id),
     FOREIGN KEY (produit_id) REFERENCES produits(id)
   );
+
+  CREATE TABLE IF NOT EXISTS stocks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    produit_nom TEXT NOT NULL,
+    taille TEXT NOT NULL,
+    quantite INTEGER DEFAULT 0,
+    UNIQUE(produit_nom, taille)
+  );
+
+  CREATE TABLE IF NOT EXISTS parametres (
+    cle TEXT PRIMARY KEY,
+    valeur TEXT NOT NULL
+  );
 `);
+
+// Initialiser les stocks si vides
+const stocksExistants = db.prepare('SELECT COUNT(*) as count FROM stocks').get();
+if (stocksExistants.count === 0) {
+  const produits = ['Maillot Technocratie', 'Rawcratie', 'Uptempocratie', 'Zaagocratie'];
+  const tailles = ['XS', 'S', 'M', 'L', 'XL'];
+  const insertStock = db.prepare('INSERT OR IGNORE INTO stocks (produit_nom, taille, quantite) VALUES (?, ?, 0)');
+  for (const produit of produits) {
+    for (const taille of tailles) {
+      insertStock.run(produit, taille);
+    }
+  }
+}
+
+// Initialiser les paramètres si vides
+db.prepare('INSERT OR IGNORE INTO parametres (cle, valeur) VALUES (?, ?)').run('commandes_ouvertes', 'true');
 
 console.log('Base de données initialisée !');
 
