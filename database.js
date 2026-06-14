@@ -70,6 +70,9 @@ try {
 try {
   db.exec('ALTER TABLE commande_produits ADD COLUMN numero TEXT');
 } catch (e) {}
+try {
+  db.exec('ALTER TABLE commandes ADD COLUMN numero_suivi TEXT');
+} catch (e) {}
 
 // Initialiser les produits si vides
 const produitsExistants = db.prepare('SELECT COUNT(*) as count FROM produits').get();

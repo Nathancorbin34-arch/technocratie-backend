@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../database');
+const { envoyerEmailSuivi } = require('../email');
 
 const router = express.Router();
 
@@ -67,7 +68,6 @@ router.get('/parametres', (req, res) => {
     const dateOuverture = paramOuverture?.valeur || '';
     const dateFermeture = paramFermeture?.valeur || '';
 
-    // Vérification automatique des dates
     let commandesOuvertes = paramOuvert ? paramOuvert.valeur === 'true' : true;
 
     if (dateOuverture && dateFermeture) {
@@ -75,8 +75,6 @@ router.get('/parametres', (req, res) => {
       const ouverture = new Date(dateOuverture);
       const fermeture = new Date(dateFermeture);
       commandesOuvertes = maintenant >= ouverture && maintenant <= fermeture;
-
-      // Mettre à jour le statut en base
       db.prepare('INSERT OR REPLACE INTO parametres (cle, valeur) VALUES (?, ?)').run('commandes_ouvertes', commandesOuvertes ? 'true' : 'false');
     }
 
@@ -104,6 +102,38 @@ router.put('/parametres/commandes', (req, res) => {
     res.json({ success: true, commandes_ouvertes: ouvert });
   } catch (error) {
     res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+router.post('/commandes/:id/envoyer-suivi', async (req, res) => {
+  console.log('Route envoyer-suivi appelée', req.params.id, req.body);
+  try {
+    const { numeroSuivi, transporteur } = req.body;
+    const commandeId = req.params.id;
+
+    const commande = db.prepare(`
+      SELECT c.*, cl.prenom, cl.email
+      FROM commandes c
+      LEFT JOIN clients cl ON c.client_id = cl.id
+      WHERE c.id = ?
+    `).get(commandeId);
+
+    if (!commande) return res.status(404).json({ message: 'Commande non trouvée' });
+
+    db.prepare('UPDATE commandes SET numero_suivi = ?, statut = ? WHERE id = ?')
+      .run(numeroSuivi, 'expediee', commandeId);
+
+    await envoyerEmailSuivi(commande.email, {
+      prenom: commande.prenom,
+      commandeId,
+      numeroSuivi,
+      transporteur
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('ERREUR envoyer-suivi:', error.message, error.stack);
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
   }
 });
 
