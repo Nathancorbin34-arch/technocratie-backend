@@ -8,6 +8,12 @@ const router = express.Router();
 router.post('/creer-session', async (req, res) => {
   const { items, personnalisations, clientEmail } = req.body;
 
+  // Vérifier si les commandes sont ouvertes
+  const param = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('commandes_ouvertes');
+  if (param && param.valeur === 'false') {
+    return res.status(403).json({ message: 'Les commandes ne sont pas ouvertes pour le moment.' });
+  }
+
   if (!items || items.length === 0) {
     return res.status(400).json({ message: 'Panier vide' });
   }
@@ -90,17 +96,14 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       const items = JSON.parse(session.metadata.items || '[]');
       const email = session.customer_email || session.customer_details?.email || null;
 
-      // Chercher le client par email
       let clientId = null;
       if (email) {
         const client = db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
         if (client) clientId = client.id;
       }
 
-      // Calcul du total
       const total = (session.amount_total || 0) / 100;
 
-      // Créer la commande
       const commande = db.prepare(`
         INSERT INTO commandes (client_id, total, statut)
         VALUES (?, ?, 'payee')
@@ -108,7 +111,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
       const commandeId = commande.lastInsertRowid;
 
-      // Ajouter les produits et décrémenter les stocks
       const insertProduit = db.prepare(`
         INSERT INTO commande_produits (commande_id, produit_id, quantite, taille, prix_unitaire)
         VALUES (?, ?, ?, ?, ?)
@@ -120,7 +122,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const prixUnitaire = parseFloat(item.prix.replace(',', '.').replace(' €', ''));
         insertProduit.run(commandeId, produitId, item.quantite, item.taille, prixUnitaire);
 
-        // Décrémenter le stock
         db.prepare(`
           UPDATE stocks SET quantite = MAX(0, quantite - ?)
           WHERE produit_nom = ? AND taille = ?
@@ -129,7 +130,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
       console.log(`✅ Commande #${commandeId} sauvegardée (${total}€)`);
 
-      // Envoyer email de confirmation
       if (email) {
         await envoyerEmailConfirmation(email, {
           commandeId,
