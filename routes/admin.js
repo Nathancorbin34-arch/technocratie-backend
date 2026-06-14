@@ -6,11 +6,21 @@ const router = express.Router();
 router.get('/commandes', (req, res) => {
   try {
     const commandes = db.prepare(`
-      SELECT c.*, cl.prenom, cl.nom, cl.email
+      SELECT c.*, cl.prenom, cl.nom, cl.email, cl.telephone, cl.adresse, cl.code_postal, cl.ville
       FROM commandes c
       LEFT JOIN clients cl ON c.client_id = cl.id
       ORDER BY c.date_commande DESC
     `).all();
+
+    for (const commande of commandes) {
+      commande.produits = db.prepare(`
+        SELECT cp.quantite, cp.taille, cp.prix_unitaire, cp.surnom, cp.numero, p.nom
+        FROM commande_produits cp
+        LEFT JOIN produits p ON cp.produit_id = p.id
+        WHERE cp.commande_id = ?
+      `).all(commande.id);
+    }
+
     res.json(commandes);
   } catch (error) {
     res.status(500).json({ message: 'Erreur serveur', error: error.message });
@@ -47,7 +57,7 @@ router.get('/stats', (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: error.message });
   }
 });
-// Récupérer le statut des commandes
+
 router.get('/parametres', (req, res) => {
   try {
     const param = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('commandes_ouvertes');
@@ -57,7 +67,6 @@ router.get('/parametres', (req, res) => {
   }
 });
 
-// Modifier le statut des commandes
 router.put('/parametres/commandes', (req, res) => {
   try {
     const { ouvert } = req.body;
@@ -67,4 +76,5 @@ router.put('/parametres/commandes', (req, res) => {
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
+
 module.exports = router;

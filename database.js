@@ -43,6 +43,8 @@ db.exec(`
     quantite INTEGER,
     taille TEXT,
     prix_unitaire REAL,
+    surnom TEXT,
+    numero TEXT,
     FOREIGN KEY (commande_id) REFERENCES commandes(id),
     FOREIGN KEY (produit_id) REFERENCES produits(id)
   );
@@ -60,6 +62,24 @@ db.exec(`
     valeur TEXT NOT NULL
   );
 `);
+
+// Ajouter les colonnes surnom/numero si elles n'existent pas encore
+try {
+  db.exec('ALTER TABLE commande_produits ADD COLUMN surnom TEXT');
+} catch (e) {}
+try {
+  db.exec('ALTER TABLE commande_produits ADD COLUMN numero TEXT');
+} catch (e) {}
+
+// Initialiser les produits si vides
+const produitsExistants = db.prepare('SELECT COUNT(*) as count FROM produits').get();
+if (produitsExistants.count === 0) {
+  const insertProduit = db.prepare('INSERT OR IGNORE INTO produits (nom, prix) VALUES (?, ?)');
+  insertProduit.run('Maillot Technocratie', 44.99);
+  insertProduit.run('Rawcratie', 44.99);
+  insertProduit.run('Uptempocratie', 44.99);
+  insertProduit.run('Zaagocratie', 44.99);
+}
 
 // Initialiser les stocks si vides
 const stocksExistants = db.prepare('SELECT COUNT(*) as count FROM stocks').get();

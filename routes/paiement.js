@@ -112,15 +112,15 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       const commandeId = commande.lastInsertRowid;
 
       const insertProduit = db.prepare(`
-        INSERT INTO commande_produits (commande_id, produit_id, quantite, taille, prix_unitaire)
-        VALUES (?, ?, ?, ?, ?)
-      `);
+  INSERT INTO commande_produits (commande_id, produit_id, quantite, taille, prix_unitaire, surnom, numero)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`);
 
       for (const item of items) {
         const produit = db.prepare('SELECT id FROM produits WHERE nom = ?').get(item.nom);
         const produitId = produit ? produit.id : null;
         const prixUnitaire = parseFloat(item.prix.replace(',', '.').replace(' €', ''));
-        insertProduit.run(commandeId, produitId, item.quantite, item.taille, prixUnitaire);
+        insertProduit.run(commandeId, produitId, item.quantite, item.taille, prixUnitaire, item.surnom || null, item.numero || null);
 
         db.prepare(`
           UPDATE stocks SET quantite = MAX(0, quantite - ?)
