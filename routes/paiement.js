@@ -6,9 +6,8 @@ const { envoyerEmailConfirmation } = require('../email');
 const router = express.Router();
 
 router.post('/creer-session', async (req, res) => {
-  const { items, personnalisations, clientEmail } = req.body;
+  const { items, clientEmail } = req.body;
 
-  // Vérifier si les commandes sont ouvertes
   const param = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('commandes_ouvertes');
   if (param && param.valeur === 'false') {
     return res.status(403).json({ message: 'Les commandes ne sont pas ouvertes pour le moment.' });
@@ -18,39 +17,25 @@ router.post('/creer-session', async (req, res) => {
     return res.status(400).json({ message: 'Panier vide' });
   }
 
-  // Vérifier les stocks avant de créer la session
   const indisponibles = [];
   for (const item of items) {
     const stock = db.prepare('SELECT quantite FROM stocks WHERE produit_nom = ? AND taille = ?').get(item.nom, item.taille);
     const quantiteDisponible = stock ? stock.quantite : 0;
     if (quantiteDisponible < item.quantite) {
-      indisponibles.push({
-        nom: item.nom,
-        taille: item.taille,
-        disponible: quantiteDisponible,
-        demande: item.quantite
-      });
+      indisponibles.push({ nom: item.nom, taille: item.taille, disponible: quantiteDisponible, demande: item.quantite });
     }
   }
 
   if (indisponibles.length > 0) {
-    return res.status(400).json({
-      message: 'Certains articles ne sont plus disponibles',
-      indisponibles
-    });
+    return res.status(400).json({ message: 'Certains articles ne sont plus disponibles', indisponibles });
   }
 
   try {
     const lineItems = items.map(item => ({
       price_data: {
         currency: 'eur',
-        product_data: {
-          name: `${item.nom} - Taille ${item.taille}`,
-          images: [],
-        },
-        unit_amount: Math.round(
-          parseFloat(item.prix.replace(',', '.').replace(' €', '')) * 100
-        ),
+        product_data: { name: `${item.nom} - Taille ${item.taille}`, images: [] },
+        unit_amount: Math.round(parseFloat(item.prix.replace(',', '.').replace(' €', '')) * 100),
       },
       quantity: item.quantite,
     }));
@@ -59,12 +44,18 @@ router.post('/creer-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-     success_url: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/commande-confirmee?session_id={CHECKOUT_SESSION_ID}`,
-cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/panier`,
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/commande-confirmee?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/panier`,
       customer_email: clientEmail || undefined,
       metadata: {
-        items: JSON.stringify(items),
-        personnalisations: JSON.stringify(personnalisations || []),
+        items: JSON.stringify(items.map(item => ({
+          n: item.nom,
+          t: item.taille,
+          q: item.quantite,
+          p: item.prix,
+          s: item.surnom || '',
+          r: item.numero || ''
+        }))),
       },
     });
 
@@ -76,7 +67,6 @@ cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/panier`,
   }
 });
 
-// Webhook Stripe
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -112,20 +102,18 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       const commandeId = commande.lastInsertRowid;
 
       const insertProduit = db.prepare(`
-  INSERT INTO commande_produits (commande_id, produit_id, quantite, taille, prix_unitaire, surnom, numero)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-`);
+        INSERT INTO commande_produits (commande_id, produit_id, quantite, taille, prix_unitaire, surnom, numero)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
 
       for (const item of items) {
-        const produit = db.prepare('SELECT id FROM produits WHERE nom = ?').get(item.nom);
+        const produit = db.prepare('SELECT id FROM produits WHERE nom = ?').get(item.n);
         const produitId = produit ? produit.id : null;
-        const prixUnitaire = parseFloat(item.prix.replace(',', '.').replace(' €', ''));
-        insertProduit.run(commandeId, produitId, item.quantite, item.taille, prixUnitaire, item.surnom || null, item.numero || null);
+        const prixUnitaire = parseFloat(item.p.replace(',', '.').replace(' €', ''));
+        insertProduit.run(commandeId, produitId, item.q, item.t, prixUnitaire, item.s || null, item.r || null);
 
-        db.prepare(`
-          UPDATE stocks SET quantite = MAX(0, quantite - ?)
-          WHERE produit_nom = ? AND taille = ?
-        `).run(item.quantite, item.nom, item.taille);
+        db.prepare(`UPDATE stocks SET quantite = MAX(0, quantite - ?) WHERE produit_nom = ? AND taille = ?`)
+          .run(item.q, item.n, item.t);
       }
 
       console.log(`✅ Commande #${commandeId} sauvegardée (${total}€)`);
@@ -134,7 +122,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         await envoyerEmailConfirmation(email, {
           commandeId,
           total,
-          items,
+          items: items.map(i => ({ nom: i.n, taille: i.t, quantite: i.q, prix: i.p })),
         });
       }
 
