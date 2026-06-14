@@ -11,13 +11,18 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: [
-    'http://localhost:4200',
-    'https://technocratie-frontend-git-main-technocratie-s-projects.vercel.app',
-    'https://technocratie-frontend.vercel.app',
-    'https://technocratie-wear.fr',
-    'https://www.technocratie-wear.fr'
-  ]
+  origin: function(origin, callback) {
+    const allowed = [
+      'http://localhost:4200',
+      'https://technocratie-wear.fr',
+      'https://www.technocratie-wear.fr'
+    ];
+    if (!origin || allowed.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
 }));
 
 // ⚠️ Le webhook DOIT être avant express.json()
