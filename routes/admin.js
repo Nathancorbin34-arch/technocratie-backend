@@ -47,5 +47,24 @@ router.get('/stats', (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: error.message });
   }
 });
+// Récupérer le statut des commandes
+router.get('/parametres', (req, res) => {
+  try {
+    const param = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('commandes_ouvertes');
+    res.json({ commandes_ouvertes: param ? param.valeur === 'true' : true });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
 
+// Modifier le statut des commandes
+router.put('/parametres/commandes', (req, res) => {
+  try {
+    const { ouvert } = req.body;
+    db.prepare('INSERT OR REPLACE INTO parametres (cle, valeur) VALUES (?, ?)').run('commandes_ouvertes', ouvert ? 'true' : 'false');
+    res.json({ success: true, commandes_ouvertes: ouvert });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
 module.exports = router;
