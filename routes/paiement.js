@@ -59,8 +59,8 @@ router.post('/creer-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: 'https://technocratie-wear.fr/commande-confirmee?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://technocratie-wear.fr/panier',
+     success_url: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/commande-confirmee?session_id={CHECKOUT_SESSION_ID}`,
+cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/panier`,
       customer_email: clientEmail || undefined,
       metadata: {
         items: JSON.stringify(items),

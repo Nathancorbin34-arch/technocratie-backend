@@ -78,5 +78,34 @@ router.post('/connexion', (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: error.message });
   }
 });
+router.get('/mes-commandes', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ message: 'Non autorisé' });
 
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const clientId = decoded.id;
+
+    const commandes = db.prepare(`
+      SELECT c.id, c.total, c.statut, c.date_commande
+      FROM commandes c
+      WHERE c.client_id = ?
+      ORDER BY c.date_commande DESC
+    `).all(clientId);
+
+    for (const commande of commandes) {
+      commande.produits = db.prepare(`
+        SELECT cp.quantite, cp.taille, cp.prix_unitaire, p.nom
+        FROM commande_produits cp
+        LEFT JOIN produits p ON cp.produit_id = p.id
+        WHERE cp.commande_id = ?
+      `).all(commande.id);
+    }
+
+    res.json(commandes);
+  } catch (err) {
+    res.status(401).json({ message: 'Token invalide' });
+  }
+});
 module.exports = router;
