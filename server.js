@@ -10,6 +10,7 @@ const db = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const exportRoutes = require('./routes/export');
 
 app.use(cors({
   origin: function(origin, callback) {
@@ -39,7 +40,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/paiement', paiementRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/stocks', stocksRoutes);
+app.use('/api/export', exportRoutes);
 
 app.listen(PORT, () => {
   console.log(`Serveur Technocratie démarré sur le port ${PORT}`);
+
 });
