@@ -98,5 +98,9 @@ if (stocksExistants.count === 0) {
 db.prepare('INSERT OR IGNORE INTO parametres (cle, valeur) VALUES (?, ?)').run('commandes_ouvertes', 'true');
 
 console.log('Base de données initialisée !');
+// Initialiser les paramètres si vides
+db.prepare('INSERT OR IGNORE INTO parametres (cle, valeur) VALUES (?, ?)').run('commandes_ouvertes', 'true');
+db.prepare('INSERT OR IGNORE INTO parametres (cle, valeur) VALUES (?, ?)').run('date_ouverture', '');
+db.prepare('INSERT OR IGNORE INTO parametres (cle, valeur) VALUES (?, ?)').run('date_fermeture', '');
 
 module.exports = db;

@@ -60,8 +60,38 @@ router.get('/stats', (req, res) => {
 
 router.get('/parametres', (req, res) => {
   try {
-    const param = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('commandes_ouvertes');
-    res.json({ commandes_ouvertes: param ? param.valeur === 'true' : true });
+    const paramOuvert = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('commandes_ouvertes');
+    const paramOuverture = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('date_ouverture');
+    const paramFermeture = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('date_fermeture');
+
+    const dateOuverture = paramOuverture?.valeur || '';
+    const dateFermeture = paramFermeture?.valeur || '';
+
+    // Vérification automatique des dates
+    let commandesOuvertes = paramOuvert ? paramOuvert.valeur === 'true' : true;
+
+    if (dateOuverture && dateFermeture) {
+      const maintenant = new Date();
+      const ouverture = new Date(dateOuverture);
+      const fermeture = new Date(dateFermeture);
+      commandesOuvertes = maintenant >= ouverture && maintenant <= fermeture;
+
+      // Mettre à jour le statut en base
+      db.prepare('INSERT OR REPLACE INTO parametres (cle, valeur) VALUES (?, ?)').run('commandes_ouvertes', commandesOuvertes ? 'true' : 'false');
+    }
+
+    res.json({ commandes_ouvertes: commandesOuvertes, date_ouverture: dateOuverture, date_fermeture: dateFermeture });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+router.put('/parametres/dates', (req, res) => {
+  try {
+    const { date_ouverture, date_fermeture } = req.body;
+    db.prepare('INSERT OR REPLACE INTO parametres (cle, valeur) VALUES (?, ?)').run('date_ouverture', date_ouverture || '');
+    db.prepare('INSERT OR REPLACE INTO parametres (cle, valeur) VALUES (?, ?)').run('date_fermeture', date_fermeture || '');
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: 'Erreur serveur' });
   }
