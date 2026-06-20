@@ -5,6 +5,10 @@ const { envoyerEmailConfirmation } = require('../email');
 
 const router = express.Router();
 
+// Prix officiels — la SEULE source de vérité, jamais le frontend
+const PRIX_OFFICIEL = '44,99 €';
+const PRIX_OFFICIEL_CENTIMES = 4499;
+
 router.post('/creer-session', async (req, res) => {
   const { items, clientEmail } = req.body;
 
@@ -31,11 +35,12 @@ router.post('/creer-session', async (req, res) => {
   }
 
   try {
+    // ⚠️ Sécurité : on ignore item.prix venant du client, on impose le prix officiel
     const lineItems = items.map(item => ({
       price_data: {
         currency: 'eur',
         product_data: { name: `${item.nom} - Taille ${item.taille}`, images: [] },
-        unit_amount: Math.round(parseFloat(item.prix.replace(',', '.').replace(' €', '')) * 100),
+        unit_amount: PRIX_OFFICIEL_CENTIMES,
       },
       quantity: item.quantite,
     }));
@@ -52,7 +57,7 @@ router.post('/creer-session', async (req, res) => {
           n: item.nom,
           t: item.taille,
           q: item.quantite,
-          p: item.prix,
+          p: PRIX_OFFICIEL,
           s: item.surnom || '',
           r: item.numero || ''
         }))),
