@@ -91,4 +91,36 @@ async function envoyerEmailSuivi(destinataire, infos) {
   console.log(`📧 Email suivi envoyé à ${destinataire}`);
 }
 
-module.exports = { envoyerEmailConfirmation, envoyerEmailSuivi };
+async function envoyerEmailResetPassword(destinataire, infos) {
+  const { prenom, lienReset } = infos;
+
+  const html = `
+    <div style="background:#030305; color:white; font-family:'Arial',sans-serif; padding:2rem; max-width:600px; margin:auto;">
+      <h1 style="color:#7a3cff; font-size:2rem; letter-spacing:2px;">TECHNOCRATIE</h1>
+      <h2 style="color:white;">Réinitialisation du mot de passe</h2>
+      <p style="color:#aaa;">Salut ${prenom || 'toi'},</p>
+      <p style="color:#aaa;">Tu as demandé à réinitialiser ton mot de passe. Clique sur le bouton ci-dessous pour en choisir un nouveau :</p>
+
+      <a href="${lienReset}" style="display:inline-block; padding:1rem 2rem; background:#7a3cff; color:white; text-decoration:none; border-radius:6px; font-weight:bold; margin: 1.5rem 0;">
+        Réinitialiser mon mot de passe →
+      </a>
+
+      <p style="color:#666; font-size:0.8rem;">Ce lien est valable 1 heure. Si tu n'as pas demandé cette réinitialisation, ignore simplement cet email.</p>
+
+      <hr style="border-color:#222; margin: 2rem 0;">
+      <p style="color:#555; font-size:0.8rem; text-align:center;">Jf & Sono — Technocratie Merch</p>
+    </div>
+  `;
+
+  await getResend().emails.send({
+    from: 'Technocratie Merch <onboarding@resend.dev>',
+    to: destinataire,
+    replyTo: process.env.GMAIL_USER,
+    subject: `🔐 Réinitialisation de ton mot de passe Technocratie`,
+    html,
+  });
+
+  console.log(`📧 Email reset password envoyé à ${destinataire}`);
+}
+
+module.exports = { envoyerEmailConfirmation, envoyerEmailSuivi, envoyerEmailResetPassword };

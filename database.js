@@ -73,6 +73,12 @@ try {
 try {
   db.exec('ALTER TABLE commandes ADD COLUMN numero_suivi TEXT');
 } catch (e) {}
+try {
+  db.exec('ALTER TABLE clients ADD COLUMN reset_token TEXT');
+} catch (e) {}
+try {
+  db.exec('ALTER TABLE clients ADD COLUMN reset_token_expire DATETIME');
+} catch (e) {}
 
 // Initialiser les produits si vides
 const produitsExistants = db.prepare('SELECT COUNT(*) as count FROM produits').get();
