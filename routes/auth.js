@@ -5,12 +5,21 @@ const db = require('../database');
 
 const router = express.Router();
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 router.post('/inscription', (req, res) => {
   const { prenom, nom, email, telephone, adresse, code_postal, ville, mot_de_passe } = req.body;
-  console.log('Données reçues:', req.body);
 
   if (!prenom || !nom || !email || !mot_de_passe) {
     return res.status(400).json({ message: 'Champs obligatoires manquants' });
+  }
+
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ message: 'Adresse email invalide' });
+  }
+
+  if (mot_de_passe.length < 6) {
+    return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
   }
 
   try {
@@ -78,6 +87,7 @@ router.post('/connexion', (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: error.message });
   }
 });
+
 router.get('/mes-commandes', (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ message: 'Non autorisé' });
@@ -108,4 +118,5 @@ router.get('/mes-commandes', (req, res) => {
     res.status(401).json({ message: 'Token invalide' });
   }
 });
+
 module.exports = router;
