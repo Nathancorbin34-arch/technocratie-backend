@@ -33,7 +33,7 @@ app.use(cors({
 // ⚠️ Le webhook DOIT être avant express.json()
 app.use('/api/paiement/webhook', express.raw({ type: 'application/json' }));
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Rate limit global — 200 requêtes / 15 min par IP
 const limiteurGlobal = rateLimit({
