@@ -42,7 +42,7 @@ async function envoyerEmailConfirmation(destinataire, commande) {
   `;
 
   await getResend().emails.send({
-    from: 'Technocratie Merch <onboarding@resend.dev>',
+    from: 'Technocratie Merch <commandes@technocratie-wear.fr>',
     to: destinataire,
     replyTo: process.env.GMAIL_USER,
     subject: `✓ Commande #${commandeId} confirmée — Technocratie`,
@@ -81,7 +81,7 @@ async function envoyerEmailSuivi(destinataire, infos) {
   `;
 
   await getResend().emails.send({
-    from: 'Technocratie Merch <onboarding@resend.dev>',
+    from: 'Technocratie Merch <commandes@technocratie-wear.fr>',
     to: destinataire,
     replyTo: process.env.GMAIL_USER,
     subject: `🚀 Ton colis #${commandeId} est en route !`,
