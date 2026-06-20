@@ -33,6 +33,15 @@ router.get('/parametres', (req, res) => {
 
 // ─── À partir d'ici, tout est protégé ───
 router.use(adminAuth);
+router.get('/token-export', (req, res) => {
+  const jwt = require('jsonwebtoken');
+  const tokenCourt = jwt.sign(
+    { email: req.admin.email, type: 'export' },
+    process.env.JWT_SECRET,
+    { expiresIn: '5m' }
+  );
+  res.json({ token: tokenCourt });
+});
 
 router.get('/commandes', (req, res) => {
   try {
@@ -114,6 +123,9 @@ router.post('/commandes/:id/envoyer-suivi', async (req, res) => {
   try {
     const { numeroSuivi, transporteur } = req.body;
     const commandeId = req.params.id;
+    if (!numeroSuivi || !transporteur) {
+  return res.status(400).json({ message: 'Numéro de suivi et transporteur requis' });
+}
 
     const commande = db.prepare(`
       SELECT c.*, cl.prenom, cl.email

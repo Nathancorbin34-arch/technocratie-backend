@@ -1,3 +1,6 @@
 node_modules/
 .env
 technocratie.db
+technocratie.db-journal
+technocratie.db-wal
+technocratie.db-shm

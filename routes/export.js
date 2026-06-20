@@ -14,13 +14,12 @@ router.get('/commandes-pdf', (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.email !== ADMIN_EMAIL) {
+    if (decoded.email !== ADMIN_EMAIL || decoded.type !== 'export') {
       return res.status(403).json({ message: 'Accès refusé' });
     }
   } catch (err) {
-    return res.status(401).json({ message: 'Token invalide' });
+    return res.status(401).json({ message: 'Token invalide ou expiré' });
   }
-
   try {
     const commandes = db.prepare(`
       SELECT c.*, cl.prenom, cl.nom, cl.email, cl.telephone, cl.adresse, cl.code_postal, cl.ville

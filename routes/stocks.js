@@ -18,6 +18,11 @@ router.get('/:produit/:taille', (req, res) => {
 // Mettre à jour le stock — ADMIN UNIQUEMENT
 router.put('/:produit/:taille', adminAuth, (req, res) => {
   const { quantite } = req.body;
+
+  if (!Number.isInteger(quantite) || quantite < 0) {
+    return res.status(400).json({ message: 'Quantité invalide' });
+  }
+
   db.prepare('INSERT OR REPLACE INTO stocks (produit_nom, taille, quantite) VALUES (?, ?, ?)').run(req.params.produit, req.params.taille, quantite);
   res.json({ success: true });
 });
@@ -25,9 +30,17 @@ router.put('/:produit/:taille', adminAuth, (req, res) => {
 // Vérifier si tous les items du panier sont disponibles — PUBLIC
 router.post('/verifier', (req, res) => {
   const { items } = req.body;
+
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ message: 'Panier invalide' });
+  }
+
   const indisponibles = [];
 
   for (const item of items) {
+    if (typeof item.nom !== 'string' || typeof item.taille !== 'string' || !Number.isInteger(item.quantite)) {
+      return res.status(400).json({ message: 'Panier invalide' });
+    }
     const stock = db.prepare('SELECT quantite FROM stocks WHERE produit_nom = ? AND taille = ?').get(item.nom, item.taille);
     const quantiteDisponible = stock ? stock.quantite : 0;
     if (quantiteDisponible < item.quantite) {

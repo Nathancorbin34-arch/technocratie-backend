@@ -8,14 +8,23 @@ function getResend() {
   return resend;
 }
 
+function echapperHTML(texte) {
+  if (typeof texte !== 'string') return texte;
+  return texte
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 async function envoyerEmailConfirmation(destinataire, commande) {
   const { commandeId, total, items } = commande;
 
   const lignesProduits = items.map(item => `
     <tr>
-      <td style="padding: 8px; border-bottom: 1px solid #222;">${item.nom} - Taille ${item.taille}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #222;">${echapperHTML(item.nom)} - Taille ${echapperHTML(item.taille)}</td>
       <td style="padding: 8px; border-bottom: 1px solid #222; text-align:center;">${item.quantite}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #222; text-align:right;">${item.prix}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #222; text-align:right;">${echapperHTML(item.prix)}</td>
     </tr>
   `).join('');
 
@@ -65,12 +74,12 @@ async function envoyerEmailSuivi(destinataire, infos) {
     <div style="background:#030305; color:white; font-family:'Arial',sans-serif; padding:2rem; max-width:600px; margin:auto;">
       <h1 style="color:#7a3cff; font-size:2rem; letter-spacing:2px;">TECHNOCRATIE</h1>
       <h2 style="color:white;">Ton colis est en route ! 🚀</h2>
-      <p style="color:#aaa;">Salut ${prenom || 'toi'},</p>
+      <p style="color:#aaa;">Salut ${echapperHTML(prenom) || 'toi'},</p>
       <p style="color:#aaa;">Bonne nouvelle, ta commande <strong style="color:white;">#${commandeId}</strong> a été expédiée !</p>
       <div style="background:rgba(122,60,255,0.15); border:1px solid rgba(122,60,255,0.4); border-radius:8px; padding:1.5rem; margin:1.5rem 0; text-align:center;">
         <p style="color:#b892ff; font-size:0.85rem; margin-bottom:0.5rem;">TON NUMÉRO DE SUIVI</p>
-        <p style="color:white; font-size:1.4rem; font-weight:bold; letter-spacing:2px;">${numeroSuivi}</p>
-        <p style="color:#aaa; font-size:0.8rem;">Transporteur : ${transporteur}</p>
+        <p style="color:white; font-size:1.4rem; font-weight:bold; letter-spacing:2px;">${echapperHTML(numeroSuivi)}</p>
+        <p style="color:#aaa; font-size:0.8rem;">Transporteur : ${echapperHTML(transporteur)}</p>
       </div>
       <a href="${lienSuivi}" style="display:inline-block; padding:1rem 2rem; background:#7a3cff; color:white; text-decoration:none; border-radius:6px; font-weight:bold;">
         Suivre mon colis →
@@ -98,7 +107,7 @@ async function envoyerEmailResetPassword(destinataire, infos) {
     <div style="background:#030305; color:white; font-family:'Arial',sans-serif; padding:2rem; max-width:600px; margin:auto;">
       <h1 style="color:#7a3cff; font-size:2rem; letter-spacing:2px;">TECHNOCRATIE</h1>
       <h2 style="color:white;">Réinitialisation du mot de passe</h2>
-      <p style="color:#aaa;">Salut ${prenom || 'toi'},</p>
+      <p style="color:#aaa;">Salut ${echapperHTML(prenom) || 'toi'},</p>
       <p style="color:#aaa;">Tu as demandé à réinitialiser ton mot de passe. Clique sur le bouton ci-dessous pour en choisir un nouveau :</p>
 
       <a href="${lienReset}" style="display:inline-block; padding:1rem 2rem; background:#7a3cff; color:white; text-decoration:none; border-radius:6px; font-weight:bold; margin: 1.5rem 0;">
@@ -113,7 +122,7 @@ async function envoyerEmailResetPassword(destinataire, infos) {
   `;
 
   await getResend().emails.send({
-    from: 'Technocratie Merch <onboarding@resend.dev>',
+    from: 'Technocratie Merch <commandes@technocratie-wear.fr>',
     to: destinataire,
     replyTo: process.env.GMAIL_USER,
     subject: `🔐 Réinitialisation de ton mot de passe Technocratie`,

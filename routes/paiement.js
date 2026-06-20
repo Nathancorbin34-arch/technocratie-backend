@@ -12,13 +12,36 @@ const PRIX_OFFICIEL_CENTIMES = 4499;
 router.post('/creer-session', async (req, res) => {
   const { items, clientEmail } = req.body;
 
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: 'Panier vide ou invalide' });
+  }
+
+  // Validation stricte de chaque item
+  for (const item of items) {
+    if (
+      typeof item.nom !== 'string' || !item.nom.trim() ||
+      typeof item.taille !== 'string' || !item.taille.trim() ||
+      !Number.isInteger(item.quantite) || item.quantite <= 0 || item.quantite > 20
+    ) {
+      return res.status(400).json({ message: 'Panier invalide' });
+    }
+    if (item.surnom && (typeof item.surnom !== 'string' || item.surnom.length > 20)) {
+      return res.status(400).json({ message: 'Surnom invalide' });
+    }
+    if (item.numero && (typeof item.numero !== 'string' || item.numero.length > 2)) {
+      return res.status(400).json({ message: 'Numéro invalide' });
+    }
+  }
+
+  // Vérification du nombre total de maillots (max 20 par commande)
+  const totalQuantite = items.reduce((sum, item) => sum + item.quantite, 0);
+  if (totalQuantite > 20) {
+    return res.status(400).json({ message: 'Maximum 20 maillots par commande' });
+  }
+
   const param = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('commandes_ouvertes');
   if (param && param.valeur === 'false') {
     return res.status(403).json({ message: 'Les commandes ne sont pas ouvertes pour le moment.' });
-  }
-
-  if (!items || items.length === 0) {
-    return res.status(400).json({ message: 'Panier vide' });
   }
 
   const indisponibles = [];
