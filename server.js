@@ -1,4 +1,3 @@
-// Test persistance volume Railway
 const helmet = require('helmet');
 const express = require('express');
 const cors = require('cors');
