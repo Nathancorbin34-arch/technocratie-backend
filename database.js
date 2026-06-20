@@ -2,8 +2,10 @@ const Database = require('better-sqlite3');
 const path = require('path');
 
 // En production (Railway), utilise le volume persistant. En local, utilise le dossier du projet.
-const dbPath = process.env.RAILWAY_ENVIRONMENT 
-  ? '/app/data/technocratie.db' 
+const fs = require('fs');
+const volumePath = '/app/data';
+const dbPath = fs.existsSync(volumePath) 
+  ? path.join(volumePath, 'technocratie.db') 
   : path.join(__dirname, 'technocratie.db');
 
 const db = new Database(dbPath);

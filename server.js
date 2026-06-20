@@ -55,6 +55,8 @@ const limiteurAuth = rateLimit({
 });
 app.use('/api/auth/connexion', limiteurAuth);
 app.use('/api/auth/inscription', limiteurAuth);
+app.use('/api/auth/mot-de-passe-oublie', limiteurAuth);
+app.use('/api/auth/reinitialiser-mot-de-passe', limiteurAuth);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Technocratie API en ligne !' });
