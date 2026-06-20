@@ -5,6 +5,33 @@ const adminAuth = require('../middleware/admin-auth');
 
 const router = express.Router();
 
+// ─── ROUTE PUBLIQUE — lue par tous les visiteurs ───
+router.get('/parametres', (req, res) => {
+  try {
+    const paramOuvert = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('commandes_ouvertes');
+    const paramOuverture = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('date_ouverture');
+    const paramFermeture = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('date_fermeture');
+
+    const dateOuverture = paramOuverture?.valeur || '';
+    const dateFermeture = paramFermeture?.valeur || '';
+
+    let commandesOuvertes = paramOuvert ? paramOuvert.valeur === 'true' : true;
+
+    if (dateOuverture && dateFermeture) {
+      const maintenant = new Date();
+      const ouverture = new Date(dateOuverture);
+      const fermeture = new Date(dateFermeture);
+      commandesOuvertes = maintenant >= ouverture && maintenant <= fermeture;
+      db.prepare('INSERT OR REPLACE INTO parametres (cle, valeur) VALUES (?, ?)').run('commandes_ouvertes', commandesOuvertes ? 'true' : 'false');
+    }
+
+    res.json({ commandes_ouvertes: commandesOuvertes, date_ouverture: dateOuverture, date_fermeture: dateFermeture });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// ─── À partir d'ici, tout est protégé ───
 router.use(adminAuth);
 
 router.get('/commandes', (req, res) => {
@@ -59,31 +86,6 @@ router.get('/stats', (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Erreur serveur', error: error.message });
-  }
-});
-
-router.get('/parametres', (req, res) => {
-  try {
-    const paramOuvert = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('commandes_ouvertes');
-    const paramOuverture = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('date_ouverture');
-    const paramFermeture = db.prepare('SELECT valeur FROM parametres WHERE cle = ?').get('date_fermeture');
-
-    const dateOuverture = paramOuverture?.valeur || '';
-    const dateFermeture = paramFermeture?.valeur || '';
-
-    let commandesOuvertes = paramOuvert ? paramOuvert.valeur === 'true' : true;
-
-    if (dateOuverture && dateFermeture) {
-      const maintenant = new Date();
-      const ouverture = new Date(dateOuverture);
-      const fermeture = new Date(dateFermeture);
-      commandesOuvertes = maintenant >= ouverture && maintenant <= fermeture;
-      db.prepare('INSERT OR REPLACE INTO parametres (cle, valeur) VALUES (?, ?)').run('commandes_ouvertes', commandesOuvertes ? 'true' : 'false');
-    }
-
-    res.json({ commandes_ouvertes: commandesOuvertes, date_ouverture: dateOuverture, date_fermeture: dateFermeture });
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
