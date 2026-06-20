@@ -1,12 +1,12 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS,
-  },
-});
+let resend;
+function getResend() {
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 async function envoyerEmailConfirmation(destinataire, commande) {
   const { commandeId, total, items } = commande;
@@ -41,9 +41,10 @@ async function envoyerEmailConfirmation(destinataire, commande) {
     </div>
   `;
 
-  await transporter.sendMail({
-    from: `"Technocratie Merch" <${process.env.GMAIL_USER}>`,
+  await getResend().emails.send({
+    from: 'Technocratie Merch <onboarding@resend.dev>',
     to: destinataire,
+    replyTo: process.env.GMAIL_USER,
     subject: `✓ Commande #${commandeId} confirmée — Technocratie`,
     html,
   });
@@ -79,9 +80,10 @@ async function envoyerEmailSuivi(destinataire, infos) {
     </div>
   `;
 
-  await transporter.sendMail({
-    from: `"Technocratie Merch" <${process.env.GMAIL_USER}>`,
+  await getResend().emails.send({
+    from: 'Technocratie Merch <onboarding@resend.dev>',
     to: destinataire,
+    replyTo: process.env.GMAIL_USER,
     subject: `🚀 Ton colis #${commandeId} est en route !`,
     html,
   });

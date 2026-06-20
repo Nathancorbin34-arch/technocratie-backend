@@ -1,10 +1,26 @@
 const express = require('express');
 const PDFDocument = require('pdfkit');
+const jwt = require('jsonwebtoken');
 const db = require('../database');
 
 const router = express.Router();
 
+const ADMIN_EMAIL = 'jfetsonomerch@gmail.com';
+
 router.get('/commandes-pdf', (req, res) => {
+  // Vérification via query param (car window.open ne peut pas envoyer de header)
+  const token = req.query.token;
+  if (!token) return res.status(401).json({ message: 'Non autorisé' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.email !== ADMIN_EMAIL) {
+      return res.status(403).json({ message: 'Accès refusé' });
+    }
+  } catch (err) {
+    return res.status(401).json({ message: 'Token invalide' });
+  }
+
   try {
     const commandes = db.prepare(`
       SELECT c.*, cl.prenom, cl.nom, cl.email, cl.telephone, cl.adresse, cl.code_postal, cl.ville
@@ -27,30 +43,23 @@ router.get('/commandes-pdf', (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename=commandes-technocratie.pdf');
     doc.pipe(res);
 
-    // ─── EN-TÊTE ───
     doc.fontSize(20).font('Helvetica-Bold').text('TECHNOCRATIE — RÉCAPITULATIF COMMANDES', { align: 'center' });
     doc.fontSize(9).font('Helvetica').fillColor('#666666').text(`Exporté le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, { align: 'center' });
     doc.moveDown(0.5);
 
-    // Ligne de séparation
     doc.moveTo(40, doc.y).lineTo(555, doc.y).strokeColor('#7a3cff').lineWidth(2).stroke();
     doc.moveDown(1);
 
-    // ─── RÉSUMÉ GLOBAL ───
     const totalMaillots = commandes.reduce((s, c) => s + (c.produits?.reduce((ss, p) => ss + p.quantite, 0) || 0), 0);
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#000000')
       .text(`Total commandes : ${commandes.length}   |   Total maillots : ${totalMaillots}`);
     doc.moveDown(1.5);
 
-    // ─── CHAQUE COMMANDE ───
     for (const commande of commandes) {
-
-      // Titre commande
-     doc.fontSize(11).font('Helvetica-Bold').fillColor('#7a3cff')
-  .text(`COMMANDE #${commande.id} — ${new Date(commande.date_commande).toLocaleDateString('fr-FR')} à ${new Date(commande.date_commande).toLocaleTimeString('fr-FR')}`, 40, doc.y, { width: 515 });
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#7a3cff')
+        .text(`COMMANDE #${commande.id} — ${new Date(commande.date_commande).toLocaleDateString('fr-FR')} à ${new Date(commande.date_commande).toLocaleTimeString('fr-FR')}`, 40, doc.y, { width: 515 });
       doc.moveDown(0.3);
 
-      // Infos client dans un encadré
       const yClient = doc.y;
       doc.rect(40, yClient, 515, commande.adresse ? 52 : 36).fillColor('#f5f5f5').fill();
       doc.fillColor('#000000').fontSize(9).font('Helvetica-Bold')
@@ -63,7 +72,6 @@ router.get('/commandes-pdf', (req, res) => {
       }
       doc.moveDown(commande.adresse ? 3.2 : 2.2);
 
-      // Tableau des produits
       if (commande.produits && commande.produits.length > 0) {
         const tableTop = doc.y;
         const colMaillot = 40;
@@ -73,7 +81,6 @@ router.get('/commandes-pdf', (req, res) => {
         const colQte = 450;
         const colPrix = 500;
 
-        // En-tête tableau
         doc.rect(40, tableTop, 515, 18).fillColor('#333333').fill();
         doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff');
         doc.text('MAILLOT', colMaillot + 4, tableTop + 5);
@@ -99,9 +106,7 @@ router.get('/commandes-pdf', (req, res) => {
           rowY += 16;
         }
 
-        // Bordure tableau
         doc.rect(40, tableTop, 515, rowY - tableTop).strokeColor('#cccccc').lineWidth(0.5).stroke();
-
         doc.y = rowY + 10;
       }
 

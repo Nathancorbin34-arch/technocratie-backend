@@ -1,8 +1,11 @@
 const express = require('express');
 const db = require('../database');
 const { envoyerEmailSuivi } = require('../email');
+const adminAuth = require('../middleware/admin-auth');
 
 const router = express.Router();
+
+router.use(adminAuth);
 
 router.get('/commandes', (req, res) => {
   try {
@@ -106,7 +109,6 @@ router.put('/parametres/commandes', (req, res) => {
 });
 
 router.post('/commandes/:id/envoyer-suivi', async (req, res) => {
-  console.log('Route envoyer-suivi appelée', req.params.id, req.body);
   try {
     const { numeroSuivi, transporteur } = req.body;
     const commandeId = req.params.id;
